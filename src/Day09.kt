@@ -11,11 +11,10 @@ fun main() {
                 for ((dx, dy) in neighbors) {
                     val nx = x + dx
                     val ny = y + dy
-                    if (nx < 0 || nx >= cols || ny < 0 || ny >= rows
-                        || heightmap[ny][nx] > heightmap[y][x]
-                    ) {
-                        ns++
+                    if (nx in 0 until cols && ny in 0 until rows && heightmap[ny][nx] <= heightmap[y][x]) {
+                        break
                     }
+                    ns++
                 }
                 if (ns >= 4) {
                     lowPoints.add(Pair(x, y))
