@@ -7,16 +7,16 @@ fun main() {
         val lowPoints: MutableList<Pair<Int, Int>> = mutableListOf()
         for (y in 0 until rows) {
             for (x in 0 until cols) {
-                var ns = 0
+                var isLower = true
                 for ((dx, dy) in neighbors) {
                     val nx = x + dx
                     val ny = y + dy
                     if (nx in 0 until cols && ny in 0 until rows && heightmap[ny][nx] <= heightmap[y][x]) {
+                        isLower = false
                         break
                     }
-                    ns++
                 }
-                if (ns >= 4) {
+                if (isLower) {
                     lowPoints.add(Pair(x, y))
                 }
             }
@@ -25,8 +25,8 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val heightmap = input.map { s ->
-            s.toCharArray().map { c ->
+        val heightmap = input.map {
+            it.map { c ->
                 c.digitToInt()
             }
         }
@@ -38,8 +38,8 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        val heightmap = input.map { s ->
-            s.toCharArray().map { c ->
+        val heightmap = input.map {
+            it.map { c ->
                 c.digitToInt()
             }.toMutableList()
         }.toMutableList()

@@ -18,13 +18,15 @@ fun main() {
         for (y in 0 until rows) {
             for (x in 0 until cols) {
                 if (grid[y][x] > 9) {
-                    count += 1
-                    for ((dx, dy) in neighbors) {
-                        val nx = x + dx
-                        val ny = y + dy
-                        if (nx in 0 until cols && ny in 0 until rows && grid[ny][nx] > 0) {
-                            grid[ny][nx] += 1
-                        }
+                    count++
+                    neighbors.map {
+                        Pair(x + it.first, y + it.second)
+                    }.filter {
+                        (it.first in 0 until cols) && (it.second in 0 until rows)
+                    }.filter {
+                        grid[it.second][it.first] > 0
+                    }.forEach {
+                        grid[it.second][it.first] += 1
                     }
                     grid[y][x] = 0
                 }
@@ -35,14 +37,14 @@ fun main() {
 
     fun part1(input: List<String>): Int {
         val grid = input.map {
-            it.toCharArray().map { c ->
+            it.map { c ->
                 c.digitToInt()
             }.toMutableList()
         }.toMutableList()
         val rows = grid.size
         val cols = grid[0].size
         var count = 0
-        for (step in 1..100) {
+        repeat(100) {
             increaseEnergyLevel(grid, cols, rows)
             do {
                 val c = flash(grid, cols, rows)
@@ -54,7 +56,7 @@ fun main() {
 
     fun part2(input: List<String>): Int {
         val grid = input.map {
-            it.toCharArray().map { c ->
+            it.map { c ->
                 c.digitToInt()
             }.toMutableList()
         }.toMutableList()

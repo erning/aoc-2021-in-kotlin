@@ -19,13 +19,13 @@ fun main() {
         return boards
     }
 
-    fun findPosition(number: Int, board: List<Int>): Int {
+    fun findPosition(number: Int, board: List<Int>): Int? {
         for ((i, n) in board.withIndex()) {
             if (n == number) {
                 return i
             }
         }
-        return -1
+        return null
     }
 
     fun part1(input: List<String>): Int {
@@ -36,10 +36,7 @@ fun main() {
             val boardXY = Array(boards.size) { IntArray(10) }
             for (number in numbers) {
                 for ((i, board) in boards.withIndex()) {
-                    val pos = findPosition(number, board)
-                    if (pos < 0) {
-                        continue
-                    }
+                    val pos = findPosition(number, board) ?: continue
                     val x = pos % 5
                     val y = pos / 5
                     boardXY[i][x] += 1
@@ -67,10 +64,7 @@ fun main() {
             val boardXY = Array(boards.size) { IntArray(10) }
             for (number in numbers) {
                 for ((i, board) in boards.withIndex()) {
-                    val pos = findPosition(number, board)
-                    if (pos < 0) {
-                        continue
-                    }
+                    val pos = findPosition(number, board) ?: continue
                     val x = pos % 5
                     val y = pos / 5
                     boardXY[i][x] += 1

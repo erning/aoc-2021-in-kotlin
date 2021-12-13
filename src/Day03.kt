@@ -3,12 +3,12 @@ fun main() {
         val cols = input[0].length
         val grid = (0 until cols).map { i ->
             input.map {
-                it[i]
+                it[i].digitToInt()
             }
         }
         val gamma = grid.map {
             it.sumOf { c ->
-                c.digitToInt() * 2 - 1
+                c * 2 - 1
             }
         }.map {
             if (it >= 0) 1 else 0
@@ -32,9 +32,9 @@ fun main() {
             var grid = input.toMutableList()
             for (i in 0 until cols){
                 val v = grid.map {
-                    it[i]
+                    it[i].digitToInt()
                 }.sumOf { c ->
-                    c.digitToInt() * 2 - 1
+                    c * 2 - 1
                 }
                 val bit = when {
                     v > 0 -> a

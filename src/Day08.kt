@@ -1,18 +1,4 @@
 fun main() {
-    fun parseInput(input: List<String>): List<Pair<List<String>, List<String>>> {
-        return input.map { line ->
-            val (a, b) = line.split(Regex("\\s*\\|\\s*"))
-            Pair(
-                a.split(" ").map {
-                    it.toCharArray().sorted().joinToString("")
-                },
-                b.split(" ").map {
-                    it.toCharArray().sorted().joinToString("")
-                }
-            )
-        }
-    }
-
     fun part1(input: List<String>): Int {
         return input.map {
             it.split(Regex("\\s*\\|\\s*"))
@@ -28,7 +14,7 @@ fun main() {
         }
     }
 
-    fun getCodeMap(input: List<String>): Map<String, Int> {
+    fun buildCodeMap(input: List<String>): Map<String, Int> {
         val codeToNumber: MutableMap<String, Int> = mutableMapOf()
         val numberToCode = Array(10) { "" }
 
@@ -80,10 +66,10 @@ fun main() {
             )
         }
 
-        return parsedInput.sumOf { (first, second) ->
-            val codeToNumber = getCodeMap(first)
-            second.map {
-                codeToNumber[it]!!
+        return parsedInput.sumOf {
+            val codeToNumber = buildCodeMap(it.first)
+            it.second.mapNotNull { code ->
+                codeToNumber[code]
             }.reduce { acc, i ->
                 acc * 10 + i
             }

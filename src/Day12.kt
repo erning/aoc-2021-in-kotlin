@@ -1,15 +1,12 @@
 fun main() {
-    fun parseGraph(input: List<String>): Map<String, List<String>> {
+    fun parseInput(input: List<String>): Map<String, List<String>> {
         val graph: MutableMap<String, MutableList<String>> = mutableMapOf()
         for (line in input) {
             val (a, b) = line.split("-")
             fun addCave(from: String, to: String) {
-                if (from == "end") return
-                if (to == "start") return
-                if (!graph.containsKey(from)) {
-                    graph[from] = mutableListOf()
-                }
-                graph.getValue(from).add(to)
+                val neighbors = graph[from] ?: mutableListOf()
+                neighbors.add(to)
+                graph[from] = neighbors
             }
             addCave(a, b)
             addCave(b, a)
@@ -18,7 +15,7 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val graph = parseGraph(input)
+        val graph = parseInput(input)
         val visited: MutableSet<String> = mutableSetOf()
         var pathCount = 0
 
@@ -27,14 +24,16 @@ fun main() {
                 pathCount++
                 return
             }
-            if (cave[0] in 'a'..'z') {
+            if (cave != "start" && cave[0] in 'a'..'z') {
                 if (visited.contains(cave)) {
                     return
                 }
                 visited.add(cave)
             }
-            for (next in graph.getValue(cave).filter { it != "start" }) {
-                travel(next)
+            graph.getValue(cave).filter {
+                it != "start"
+            }.forEach {
+                travel(it)
             }
             visited.remove(cave)
         }
@@ -44,7 +43,7 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        val graph = parseGraph(input)
+        val graph = parseInput(input)
         val visited: MutableMap<String, Int> = mutableMapOf()
         var pathCount = 0
 
@@ -53,22 +52,24 @@ fun main() {
                 pathCount++
                 return
             }
-            if (cave[0] in 'a'..'z') {
-                val visitedTimes = visited[cave]
-                if (visitedTimes == null) {
+            if (cave != "start" && cave[0] in 'a'..'z') {
+                val times = visited[cave]
+                if (times == null) {
                     visited[cave] = 1
                 } else if (visited.values.any { it > 1 }) {
                     return
                 } else {
-                    visited[cave] = visitedTimes + 1
+                    visited[cave] = times + 1
                 }
             }
-            for (next in graph.getValue(cave).filter { it != "start" }) {
-                travel(next)
+            graph.getValue(cave).filter {
+                it != "start"
+            }.forEach {
+                travel(it)
             }
-            val visitedTimes = visited.remove(cave) ?: return
-            if (visitedTimes > 1) {
-                visited[cave] = visitedTimes - 1
+            val times = visited.remove(cave) ?: return
+            if (times > 1) {
+                visited[cave] = times - 1
             }
         }
 

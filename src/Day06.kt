@@ -15,6 +15,7 @@ fun main() {
                 }
             }
         }
+
         return lanternfish.size
     }
 
@@ -33,9 +34,7 @@ fun main() {
                 timers[i-1] = timers[i]
             }
             timers[8] = new
-            if (new > 0L) {
-                timers[6] += new
-            }
+            timers[6] += new
         }
 
         return timers.sum()

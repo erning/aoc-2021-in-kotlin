@@ -2,7 +2,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 fun main() {
-    fun parseLines(input: List<String>): List<List<Int>> {
+    fun parseInput(input: List<String>): List<List<Int>> {
         return input.map { line ->
             line.split(Regex("[\\->,\\s]+")).map {
                 it.toInt()
@@ -33,7 +33,7 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val lines = parseLines(input).filter { (x1, y1, x2, y2) ->
+        val lines = parseInput(input).filter { (x1, y1, x2, y2) ->
             x1 == x2 || y1 == y2
         }
         val points = getPoints(lines)
@@ -41,7 +41,7 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        val lines = parseLines(input)
+        val lines = parseInput(input)
         val points = getPoints(lines)
         return points.count { it.value > 1 }
     }
