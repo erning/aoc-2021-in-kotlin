@@ -9,7 +9,7 @@ fun main() {
     fun part2(input: List<String>): Int {
         val numbers = input.map { it.toInt() }
         return part1(
-            numbers.dropLast(2).indices.map {
+            (0 until numbers.size - 2).map {
                 numbers[it] + numbers[it + 1] + numbers[it + 2]
             }.map {
                 it.toString()
