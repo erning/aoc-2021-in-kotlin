@@ -72,14 +72,15 @@ fun main() {
                 return
             }
             decodeOperator(packet)
+            val subValues = packet.subPackets.map { it.value }
             when (packet.typeID) {
-                0 -> packet.value = packet.subPackets.sumOf { it.value }
-                1 -> packet.value = packet.subPackets.map { it.value }.reduce { acc, l -> acc * l }
-                2 -> packet.value = packet.subPackets.minOf { it.value }
-                3 -> packet.value = packet.subPackets.maxOf { it.value }
-                5 -> packet.value = if (packet.subPackets[0].value > packet.subPackets[1].value) 1 else 0
-                6 -> packet.value = if (packet.subPackets[0].value < packet.subPackets[1].value) 1 else 0
-                7 -> packet.value = if (packet.subPackets[0].value == packet.subPackets[1].value) 1 else 0
+                0 -> packet.value = subValues.sumOf { it }
+                1 -> packet.value = subValues.reduce { acc, l -> acc * l }
+                2 -> packet.value = subValues.minOrNull() ?: 0
+                3 -> packet.value = subValues.maxOrNull() ?: 0
+                5 -> packet.value = subValues.let { (a, b) -> if (a > b) 1 else 0 }
+                6 -> packet.value = subValues.let { (a, b) -> if (a < b) 1 else 0 }
+                7 -> packet.value = subValues.let { (a, b) -> if (a == b) 1 else 0 }
             }
         }
 
