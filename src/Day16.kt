@@ -23,71 +23,54 @@ fun main() {
         }
     }
 
-    class Packet {
-        var version: Int = 0
-        var typeID: Int = 0
-        var value: Long = 0
-        var subPackets: MutableList<Packet> = mutableListOf()
-
-        override fun toString(): String {
-            return "Packet v:$version t:$typeID - ${value}"
-        }
-    }
+    data class Packet(
+        val version: Int, val typeID: Int, val value: Long,
+        val children: List<Packet>? = null
+    )
 
     class PacketDecoder(val br: BitReader) {
-        fun decodeValue(packet: Packet) {
-            var bits = ""
-            do {
-                val hasMore = br.read() == 1
-                bits += br.read(4)
-            } while (hasMore)
-            packet.value = bits.toLong(2)
+        fun decode(): Packet {
+            val version = br.readInt(3)
+            val typeID = br.readInt(3)
+            if (typeID == 4) {
+                return Packet(version, typeID, decodeLiteralValue())
+            }
+            val children = decodeSubPackets()
+            val subvalues = children.map { it.value }
+            val value: Long = when (typeID) {
+                0 -> subvalues.sum()
+                1 -> subvalues.reduce { acc, l -> acc * l }
+                2 -> subvalues.minOrNull() ?: 0
+                3 -> subvalues.maxOrNull() ?: 0
+                5 -> subvalues.let { (a, b) -> if (a > b) 1 else 0 }
+                6 -> subvalues.let { (a, b) -> if (a < b) 1 else 0 }
+                7 -> subvalues.let { (a, b) -> if (a == b) 1 else 0 }
+                else -> 0
+            }
+            return Packet(version, typeID, value, children)
         }
 
-        fun decodeOperator(packet: Packet) {
-            val lengthTypeID = br.read()
-            if (lengthTypeID == 0) {
-                val length = br.readInt(15)
-                val p = br.p
-                while (br.p - p < length) {
-                    val sub = Packet()
-                    packet.subPackets.add(sub)
-                    decode(sub)
+        fun decodeLiteralValue(): Long {
+            var value = 0L
+            do {
+                val v = br.readInt(5).toLong()
+                value = value.shl(4).or(v.and(0x0F))
+            } while (v.and(0x10) != 0L)
+            return value
+        }
+
+        fun decodeSubPackets(): List<Packet> {
+            val children: MutableList<Packet> = mutableListOf()
+            if (br.read() == 0) {
+                val end = br.readInt(15) + br.p
+                while (br.p < end) {
+                    children.add(decode())
                 }
             } else {
-                val length = br.readInt(11)
-                repeat(length) {
-                    val sub = Packet()
-                    packet.subPackets.add(sub)
-                    decode(sub)
-                }
+                val count = br.readInt(11)
+                repeat(count) { children.add(decode()) }
             }
-        }
-
-        fun decode(packet: Packet) {
-            packet.version = br.readInt(3)
-            packet.typeID = br.readInt(3)
-            if (packet.typeID == 4) {
-                decodeValue(packet)
-                return
-            }
-            decodeOperator(packet)
-            val subValues = packet.subPackets.map { it.value }
-            when (packet.typeID) {
-                0 -> packet.value = subValues.sumOf { it }
-                1 -> packet.value = subValues.reduce { acc, l -> acc * l }
-                2 -> packet.value = subValues.minOrNull() ?: 0
-                3 -> packet.value = subValues.maxOrNull() ?: 0
-                5 -> packet.value = subValues.let { (a, b) -> if (a > b) 1 else 0 }
-                6 -> packet.value = subValues.let { (a, b) -> if (a < b) 1 else 0 }
-                7 -> packet.value = subValues.let { (a, b) -> if (a == b) 1 else 0 }
-            }
-        }
-
-        fun decode(): Packet {
-            val packet = Packet()
-            decode(packet)
-            return packet
+            return children
         }
     }
 
@@ -99,7 +82,7 @@ fun main() {
 
         fun sumOfVersion(packet: Packet): Int {
             var sum = packet.version
-            packet.subPackets.forEach {
+            packet.children?.forEach {
                 sum += sumOfVersion(it)
             }
             return sum
