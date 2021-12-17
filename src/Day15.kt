@@ -2,91 +2,44 @@ import java.util.*
 
 fun main() {
     fun parseInput(input: List<String>): List<List<Int>> {
-        return input.map {
-            it.map { c ->
-                c.digitToInt()
-            }
-        }
+        return input.map { it.map { c -> c.digitToInt() } }
     }
 
-    fun parseInputExtend(input: List<String>): List<List<Int>> {
-        val times = 5
-        val h = input.size
-        val w = input.first().length
-        val grid = parseInput(input)
-        val extended = Array(h * times) { IntArray(w * times) }
-
-        for (y in 0 until w) {
-            for (x in 0 until h) {
-                for (yi in 0 until times) {
-                    for (xi in 0 until times) {
-                        val v = grid[y][x] + xi + yi
-                        extended[y + yi * h][x + xi * w] = v % 10 + v / 10
-                    }
-                }
-            }
-        }
-
-        return extended.map {
-            it.toList()
-        }.toList()
-    }
-
-    fun buildGraph(grid: List<List<Int>>): Array<List<Pair<Int, Int>>> {
-        val dir = listOf(Pair(1, 0), Pair(0, 1), Pair(-1, 0), Pair(0, -1))
-
+    fun dijkstra(grid: List<List<Int>>, times: Int = 1): Int {
         val h = grid.size
         val w = grid.first().size
+        val rows = h * times
+        val cols = w * times
 
-        val graph = Array<MutableList<Pair<Int, Int>>>(h * w) { mutableListOf() }
-        for (i in graph.indices) {
-            val x = i % w
-            val y = i / w
-            for (d in dir) {
-                val nx = x + d.first
-                val ny = y + d.second
-                if (nx < 0 || nx >= w || ny < 0 || ny >= h) {
-                    continue
-                }
-                val ni = nx + ny * w
-                graph[i].add(ni to grid[ny][nx])
-            }
-        }
-        return graph.map { it.toList() }.toTypedArray()
-    }
-
-    fun dijkstra(graph: Array<List<Pair<Int, Int>>>): Int {
-        val visited: MutableSet<Int> = mutableSetOf(0)
-        val queue: PriorityQueue<Pair<Int, Int>> = PriorityQueue(compareBy { it.second })
-        queue.add(Pair(0, 0))
+        val directions = listOf(Pair(1, 0), Pair(0, 1), Pair(-1, 0), Pair(0, -1))
+        val visited: MutableSet<Pair<Int, Int>> = mutableSetOf(Pair(0, 0))
+        val queue: PriorityQueue<Triple<Int, Int, Int>> = PriorityQueue(compareBy { it.third })
+        queue.add(Triple(0, 0, 0))
 
         while (true) {
-            val (nodeID, nodeRisk) = queue.remove() ?: break
-            if (nodeID == graph.size - 1) {
-                return nodeRisk
-            }
-            for ((nextID, nextRisk) in graph[nodeID]) {
-                if (visited.contains(nextID)) {
-                    continue
+            val (x, y, costs) = queue.remove() ?: return Int.MAX_VALUE
+            if (x == cols - 1 && y == rows - 1) return costs
+            directions
+                .map { Pair(x + it.first, y + it.second) }
+                .filter { (x, y) -> x in 0 until cols && y in 0 until rows }
+                .filter { !visited.contains(it) }
+                .forEach { (x, y) ->
+                    var cost = grid[y % h][x % w] + y / h + x / w
+                    while (cost > 9) cost -= 9
+                    queue.add(Triple(x, y, costs + cost))
+                    visited.add(Pair(x, y))
                 }
-                val nextNode = Pair(nextID, nodeRisk + nextRisk)
-                queue.add(nextNode)
-                visited.add(nextID)
-            }
         }
-        return 0
     }
 
     fun part1(input: List<String>): Int {
         val grid = parseInput(input)
-        val graph = buildGraph(grid)
-        return dijkstra(graph)
+        return dijkstra(grid)
     }
 
     fun part2(input: List<String>): Int {
-        val grid = parseInputExtend(input)
-        val graph = buildGraph(grid)
-        return dijkstra(graph)
+        val grid = parseInput(input)
+        return dijkstra(grid, 5)
     }
 
     val day = 15
