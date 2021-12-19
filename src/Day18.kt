@@ -1,110 +1,105 @@
 fun main() {
-    class Node(var value: Int? = null, var first: Node? = null, var second: Node? = null) {
+    class Node(
+        private var _value: Int? = null,
+        private var _lhs: Node? = null,
+        private var _rhs: Node? = null,
+    ) {
         constructor(value: Int) : this(value, null, null)
-        constructor(first: Node, second: Node) : this(null, first, second)
+        constructor(lhs: Node, rhs: Node) : this(null, lhs, rhs)
 
-        val isNumber: Boolean
-            get() {
-                return value != null
+        val isNumber: Boolean get() = _value != null
+        val isPair: Boolean get() = !isNumber && lhs.isNumber && rhs.isNumber
+
+        var value: Int
+            get() = _value!!
+            set(nv) {
+                _value = nv; _lhs = null; _rhs = null
             }
 
-        val isPair: Boolean
-            get() {
-                if (isNumber) return false
-                return (first!!.isNumber && second!!.isNumber)
+        var lhs: Node
+            get() = _lhs!!
+            set(nv) {
+                _value = null; _lhs = nv
+            }
+
+        var rhs: Node
+            get() = _rhs!!
+            set(nv) {
+                _value = null; _rhs = nv
             }
 
         override fun toString(): String {
-            if (isNumber) return "$value"
-//            if (isPair)  return "<$first, $second>"
-            return "[$first, $second]"
+            return if (isNumber) "$value" else "[$lhs,$rhs]"
         }
 
-        fun explode(): Boolean {
-            var toExplode: Node? = null
-            var left: Node? = null
-            var right: Node? = null
-
-            fun find(node: Node, depth: Int = 0) {
-                if (node.isNumber) {
-                    if (toExplode == null) {
-                        left = node
-                    } else {
-                        if (right == null) {
-                            if (node != toExplode!!.first && node != toExplode!!.second) {
-                                right = node
-                            }
+        fun _explode(): Boolean {
+            val found = fun(): Triple<Node?, Node?, Node?> {
+                var en: Node? = null
+                var ln: Node? = null
+                var rn: Node? = null
+                fun find(node: Node, depth: Int) {
+                    if (node.isNumber) {
+                        if (en == null) {
+                            ln = node
+                        } else if (rn == null) {
+                            rn = node
                         }
-                    }
-                    return
-                }
-
-                if (node.isPair) {
-                    if (depth >= 4 && toExplode == null) {
-                        toExplode = node
+                    } else if (en == null && depth >= 4) {
+                        en = node
+                    } else if (en == null || rn == null) {
+                        find(node.lhs, depth + 1)
+                        find(node.rhs, depth + 1)
                     }
                 }
-                find(node.first!!, depth + 1)
-                find(node.second!!, depth + 1)
-            }
-            find(this)
+                find(this, 0)
+                return Triple(en, ln, rn)
+            }()
 
-            if (toExplode == null) {
-                return false
+            val en = found.first ?: return false
+            val ln = found.second
+            if (ln != null) {
+                ln.value += en.lhs.value
             }
-
-            if (left != null) {
-                left!!.value = toExplode!!.first!!.value!! + left!!.value!!
+            val rn = found.third
+            if (rn != null) {
+                rn.value += en.rhs.value
             }
-            if (right != null) {
-                right!!.value = toExplode!!.second!!.value!! + right!!.value!!
-            }
-            toExplode!!.value = 0
-            toExplode!!.first = null
-            toExplode!!.second = null
-
+            en.value = 0
             return true
         }
 
-        fun split(): Boolean {
-            var found = false
-            fun find(node: Node) {
-                if (found) return
-                if (node.isNumber) {
-                    val v = node.value ?: return
-                    if (v >= 10) {
-                        node.value = null
-                        node.first = Node(v / 2)
-                        node.second = Node(v / 2 + v % 2)
-                        found = true
-                    }
-                    return
+        fun _split(): Boolean {
+            fun find(node: Node): Node? {
+                return if (node.isNumber) {
+                    if (node.value >= 10) node else null
+                } else {
+                    find(node.lhs) ?: find(node.rhs)
                 }
-                find(node.first!!)
-                find(node.second!!)
             }
-            find(this)
-            return found
+
+            val node = find(this) ?: return false
+            val v1 = node.value / 2
+            val v2 = node.value % 2 + v1
+            node.lhs = Node(v1)
+            node.rhs = Node(v2)
+            return true
         }
 
-        fun reduce(): Boolean {
+        fun _reduce(): Boolean {
             var count = 0
-            while (explode() || split()) {
-                count++
-            }
+            while (_explode() || _split()) count++
             return count > 0
         }
 
-        fun add(other: Node): Node {
+        fun _add(other: Node): Node {
             return Node(this, other)
         }
 
-        fun magnitude(): Int {
-            fun calc(node: Node): Int {
-                if (node.isNumber) return node.value!!
-                return calc(node.first!!) * 3 + calc(node.second!!) * 2
-            }
-            return calc(this)
+        fun magnitude(node: Node = this): Int {
+            return if (node.isNumber)
+                node.value
+            else
+                magnitude(node.lhs) * 3 + magnitude(node.rhs) * 2
         }
     }
 
@@ -115,36 +110,50 @@ fun main() {
             while (i < data.length) {
                 val c = data[i++]
                 if (c.isDigit()) {
-                    return Node(c.digitToInt())
+                    var n = c.digitToInt()
+                    var j = i
+                    while (j < data.length && data[j].isDigit()) {
+                        n = n * 10 + data[j].digitToInt()
+                        j++
+                    }
+                    i = j
+                    return Node(n)
                 }
                 when (c) {
                     '[' -> stack.add(buildNode())
                     ',' -> stack.add(buildNode())
                     ']' -> {
-                        val second = stack.removeLast()
-                        val first = stack.removeLast()
-                        return Node(first, second)
+                        val rhs = stack.removeLast()
+                        val lhs = stack.removeLast()
+                        return Node(lhs, rhs)
                     }
-                    else -> error("?")
                 }
             }
-            error("?")
+            error("invalid")
         }
         return buildNode()
     }
 
-    fun parseInput(input: List<String>): List<Node> {
-        return input.map { parseNode(it) }
+    fun Node.copy(): Node {
+        return parseNode(this.toString())
+    }
+
+    fun Node.reduce(): Node {
+        val node = this.copy()
+        node._reduce()
+        return node
+    }
+
+    fun Node.add(other: Node): Node {
+        val node = this.copy()
+        return node._add(other)
     }
 
     fun part1(input: List<String>): Int {
-        val nodes = parseInput(input)
-        var node = nodes.first()
-        for (next in nodes.drop(1)) {
-            node = node.add(next)
-            node.reduce()
-        }
-        return node.magnitude()
+        return input
+            .map { parseNode(it) }
+            .reduce { acc, it -> acc.add(it).reduce() }
+            .magnitude()
     }
 
     fun part2(input: List<String>): Int {
@@ -154,14 +163,64 @@ fun main() {
                 if (i == j) continue
                 val n1 = parseNode(input[i])
                 val n2 = parseNode(input[j])
-                var node = n1.add(n2)
-                node.reduce()
-                val m = node.magnitude()
+                val m = n1.add(n2).reduce().magnitude()
                 if (m > max) max = m
             }
         }
         return max
     }
+
+    //
+
+    fun testExplode() {
+        val cases: List<Pair<String, String>> = listOf(
+            Pair("[[[[[9,8],1],2],3],4]", "[[[[0,9],2],3],4]"),
+            Pair("[7,[6,[5,[4,[3,2]]]]]", "[7,[6,[5,[7,0]]]]"),
+            Pair("[[6,[5,[4,[3,2]]]],1]", "[[6,[5,[7,0]]],3]"),
+            Pair("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]", "[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]"),
+            Pair("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]", "[[3,[2,[8,0]]],[9,[5,[7,0]]]]"),
+        )
+        for (case in cases) {
+            val node = parseNode(case.first)
+            node._explode()
+            if (node.toString() != case.second) {
+                error("expect: ${case.second}, but: $node")
+            }
+        }
+    }
+
+    fun testSplit() {
+        val cases: List<Pair<String, String>> = listOf(
+            Pair("[[[[0,7],4],[15,[0,13]]],[1,1]]", "[[[[0,7],4],[[7,8],[0,13]]],[1,1]]"),
+            Pair("[[[[0,7],4],[[7,8],[0,13]]],[1,1]]", "[[[[0,7],4],[[7,8],[0,[6,7]]]],[1,1]]"),
+        )
+        for (case in cases) {
+            val node = parseNode(case.first)
+            node._split()
+            if (node.toString() != case.second) {
+                error("expect: ${case.second}, but: $node")
+            }
+        }
+    }
+
+    fun testReduce() {
+        val cases: List<Pair<String, String>> = listOf(
+            Pair("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]", "[[[[0,7],4],[[7,8],[6,0]]],[8,1]]"),
+        )
+        for (case in cases) {
+            val node = parseNode(case.first)
+            node._reduce()
+            if (node.toString() != case.second) {
+                error("expect: ${case.second}, but: $node")
+            }
+        }
+    }
+
+    testExplode()
+    testSplit()
+    testReduce()
+
+    //
 
     val day = 18
     val title = "Snailfish"
@@ -176,4 +235,6 @@ fun main() {
 
     check(part2(exampleInput) == 3993)
     print("Part Two: "); println(part2(input))
+
+
 }
