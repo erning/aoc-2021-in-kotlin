@@ -1,46 +1,42 @@
 fun main() {
-    class Image(val data: List<String>) {
-        val width = data.first().length
-        val height = data.size
+    class Image(val data: List<String>, val default: Char = '.') {
+        val width: Int get() = data.first().length
+        val height: Int get() = data.size
+        val lights: Int get() = data.sumOf { it.count { c -> c == '#' } }
 
         override fun toString(): String {
             return data.joinToString(separator = "\n")
         }
 
-        val lightPixels: Int get() = data.sumOf { it.count { c -> c == '#' } }
-
-        fun getPixel(x: Int, y: Int, default: Char = '.'): Char {
+        operator fun get(x: Int, y: Int): Char? {
             if (x < 0 || x >= width || y < 0 || y >= height) {
-                return default
+                return null
             }
             return data[y][x]
         }
 
-        fun enhance(enhancement: String, times: Int): Image {
-            var image = this
-            var default = '.'
-            repeat(times) {
-                val output: MutableList<String> = mutableListOf()
-                for (y in -1 until image.height + 1) {
-                    var row = ""
-                    for (x in -1 until image.width + 1) {
-                        val idx = (0..8).map {
-                            image.getPixel(it % 3 - 1 + x, it / 3 - 1 + y, default)
-                        }.map {
-                            if (it == '#') 1 else 0
-                        }.reduce { acc, v ->
-                            acc.shl(1).or(v)
-                        }
-                        row += enhancement[idx]
+        fun enhance(enhancement: String): Image {
+            val output: MutableList<String> = mutableListOf()
+            for (y in -1 until height + 1) {
+                var row = ""
+                for (x in -1 until width + 1) {
+                    val idx = (0..8).map {
+                        Pair(it % 3 -1, it / 3 - 1)
+                    }.map { (dx, dy) ->
+                        this[x + dx, y + dy] ?: default
+                    }.map {
+                        if (it == '#') 1 else 0
+                    }.reduce { acc, v ->
+                        acc.shl(1).or(v)
                     }
-                    output.add(row)
+                    row += enhancement[idx]
                 }
-                image = Image(output)
-                if (enhancement[0] == '#') {
-                    default = if (default == '#') '.' else '#'
-                }
+                output.add(row)
             }
-            return image
+            val outside = if (enhancement.first() != '#') '.' else {
+                if (default == '#') enhancement.last() else '#'
+            }
+            return Image(output, outside)
         }
     }
 
@@ -52,13 +48,19 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val (enhancement, image) = parseInput(input)
-        return image.enhance(enhancement, 2).lightPixels
+        var (enhancement, image) = parseInput(input)
+        repeat(2) {
+            image = image.enhance(enhancement)
+        }
+        return image.lights
     }
 
     fun part2(input: List<String>): Int {
-        val (enhancement, image) = parseInput(input)
-        return image.enhance(enhancement, 50).lightPixels
+        var (enhancement, image) = parseInput(input)
+        repeat(50) {
+            image = image.enhance(enhancement)
+        }
+        return image.lights
     }
 
     val day = 20
