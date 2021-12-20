@@ -61,14 +61,6 @@ fun main() {
         constructor(beacons: List<Point>) : this(Point(0, 0, 0), beacons.toSet())
         constructor(position: Point, beacons: List<Point>) : this(position, beacons.toSet())
 
-        override fun toString(): String {
-            var s = "(${position.x}, ${position.y}, ${position.z})\n"
-            for (beacon in beacons) {
-                s += "${beacon.x}, ${beacon.y}, ${beacon.z}\n"
-            }
-            return s
-        }
-
         fun move(newPosition: Point): Scanner {
             val delta = newPosition - position
             return Scanner(newPosition, beacons.map { it + delta })
@@ -131,50 +123,43 @@ fun main() {
 
     fun part1(input: List<String>): Int {
         val scanners = parseInput(input)
+        val remaining: MutableList<Int> = scanners.indices.drop(1).toMutableList()
         var base = scanners.first()
-        var remaining: MutableList<Scanner?> = scanners.drop(1).toMutableList()
 
         while (remaining.isNotEmpty()) {
-            for (i in 0 until remaining.size) {
-                val other = remaining[i] ?: continue
-                val scanner = base.match(other) ?: continue
+            val other = remaining.removeFirst()
+            val scanner = base.match(scanners[other])
+            if (scanner != null) {
                 base = Scanner(base.beacons.union(scanner.beacons))
-                remaining[i] = null
+            } else {
+                remaining.add(other)
             }
-            remaining = remaining.filterNotNull().toMutableList()
         }
         return base.beacons.size
     }
 
     fun part2(input: List<String>): Int {
         val scanners = parseInput(input)
+        val remaining: MutableList<Int> = scanners.indices.drop(1).toMutableList()
         var base = scanners.first()
-        var remaining: MutableList<Scanner?> = scanners.drop(1).toMutableList()
-
         val positions: MutableList<Point> = mutableListOf(base.position)
 
         while (remaining.isNotEmpty()) {
-            for (i in 0 until remaining.size) {
-                val other = remaining[i] ?: continue
-                val scanner = base.match(other) ?: continue
+            val other = remaining.removeFirst()
+            val scanner = base.match(scanners[other])
+            if (scanner != null) {
                 base = Scanner(base.beacons.union(scanner.beacons))
-                remaining[i] = null
                 positions.add(scanner.position)
-                println(base.beacons.size)
+            } else {
+                remaining.add(other)
             }
-            remaining = remaining.filterNotNull().toMutableList()
         }
 
-        var md = Int.MIN_VALUE
-        for (p1 in positions) {
-            for (p2 in positions) {
-                val d = p1.manhattanDistance(p2)
-                if (d > md) {
-                    md = d
-                }
+        return positions.maxOf { a ->
+            positions.maxOf { b ->
+                a.manhattanDistance(b)
             }
         }
-        return md
     }
 
     val day = 19
