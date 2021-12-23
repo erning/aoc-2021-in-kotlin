@@ -23,28 +23,19 @@ fun main() {
         }
     }
 
-    data class Instruction(val operator: Boolean, val operand: Cube)
+    data class Instruction(val operator: Int, val operand: Cube)
 
     class Reactor {
         val instructions: MutableList<Instruction> = mutableListOf()
+        val size: Long get() = instructions.sumOf { it.operator * it.operand.size }
 
-        val size: Long get() {
-            var size = 0L
-            for ((operator, operand) in instructions) {
-                size += operand.size * if (operator) 1 else -1
-            }
-            return size
-        }
-
-        fun turn(isOn: Boolean, cube: Cube) {
+        fun turn(isOn: Int, cube: Cube) {
             val additions: MutableList<Instruction> = mutableListOf()
             for ((operator, operand) in instructions) {
                 val i = cube.intersect(operand) ?: continue
-                additions += Instruction(!operator, i)
+                additions += Instruction(-operator, i)
             }
-            if (isOn) {
-                instructions.add(Instruction(true, cube))
-            }
+            if (isOn == 1) instructions.add(Instruction(1, cube))
             instructions.addAll(additions)
         }
     }
@@ -54,7 +45,7 @@ fun main() {
             line.split(" ").map {
                 when (it) {
                     "on" -> listOf(1)
-                    "off" -> listOf(0)
+                    "off" -> listOf(-1)
                     else -> {
                         it.split(",").map { range ->
                             range.substring(2).split("..").map { v -> v.toInt() }
@@ -76,7 +67,7 @@ fun main() {
             val y = Segment(step[3], step[4])
             val z = Segment(step[5], step[6])
             val cube = Cube(x, y, z)
-            reactor.turn(step[0] == 1, cube)
+            reactor.turn(step[0], cube)
         }
         return reactor.size
     }
@@ -89,7 +80,7 @@ fun main() {
             val y = Segment(step[3], step[4])
             val z = Segment(step[5], step[6])
             val cube = Cube(x, y, z)
-            reactor.turn(step[0] == 1, cube)
+            reactor.turn(step[0], cube)
         }
         return reactor.size
     }
