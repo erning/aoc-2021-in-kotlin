@@ -1,133 +1,185 @@
 import java.util.*
 
 fun main() {
-    val burrowMap: List<List<Int>> = fun(): List<List<Int>> {
-        val map: List<List<Int>> = listOf(
-            listOf(1),          // 0
-            listOf(0, 2),       // 1
-            listOf(1, 3, 11),   // 2
-            listOf(2, 4),       // 3
-            listOf(3, 5, 13),   // 4
-            listOf(4, 6),       // 5
-            listOf(5, 7, 15),   // 6
-            listOf(6, 8),       // 7
-            listOf(7, 9, 17),   // 8
-            listOf(8, 10),      // 9
-            listOf(9),          // 10
-            listOf(2, 12),      // 11
-            listOf(11),         // 12
-            listOf(4, 14),      // 13
-            listOf(13),         // 14
-            listOf(6, 16),      // 15
-            listOf(15),         // 16
-            listOf(8, 18),      // 17
-            listOf(17),         // 18
-        )
-
-        // TODO: path
-        fun dijkstra(start: Int): List<Int> {
-            val visited: MutableMap<Int, Int> = mutableMapOf(start to 0)
-            val queue: PriorityQueue<Pair<Int, Int>> = PriorityQueue(compareBy { it.second })
-            queue.add(Pair(start, 0))
-            while (queue.isNotEmpty()) {
-                val (i, dist) = queue.remove()
-                map[i]
-                    .filter { !visited.contains(it) }
-                    .forEach {
-                        queue.add(Pair(it, dist + 1))
-                        visited[it] = dist + 1
-                    }
+    class Rule(val depth: Int = 2) {
+        val doors = listOf(2, 4, 6, 8)
+        val hallway = (0..10).toList().filter { it !in doors }
+        val rooms: List<List<Int>> by lazy {
+            (0..3).map { i ->
+                (0 until depth).map { it * 4 + 11 + i }
             }
-            if (start <= 10) {
-                (0..10).filter { start != it }.forEach { visited[it] = 0 }
-            } else {
-                (2..8 step 2).forEach { visited[it] = 0 }
-            }
-            return (0..visited.keys.maxOf { it }).map { visited[it] ?: 0 }
         }
-        return (0..18).map { dijkstra(it) }
-    }()
 
-    val energyCostMap: Map<Char, Int> = mapOf(
-        'A' to 1, 'B' to 10, 'C' to 100, 'D' to 1000
-    )
+        val costs: IntArray = intArrayOf(1, 10, 100, 1000)
 
-    fun moveAmphipod(amphipods: Map<Int, Char>, from: Int, to: Int): Map<Int, Char>? {
-        val amphipod = amphipods[from] ?: return null
-        if (amphipods.containsKey(to)) return null
-        val new = amphipods.toMutableMap()
-        // TODO: check movement rules!
-        new.remove(from)
-        new[to] = amphipod
-        return new
+        val paths: Map<Int, Map<Int, List<Int>>> by lazy {
+            fun getPath(a: Int, b: Int): List<Int> {
+                assert(b <= 10)
+                if (a <= 10) {
+                    return if (a < b) (a..b).toList() else (b..a).toList().reversed()
+                }
+                val path: MutableList<Int> = mutableListOf()
+                path.add(a)
+                when (a) {
+                    11 -> path.addAll(getPath(2, b))
+                    12 -> path.addAll(getPath(4, b))
+                    13 -> path.addAll(getPath(6, b))
+                    14 -> path.addAll(getPath(8, b))
+                    else -> path.addAll(getPath(a - 4, b))
+                }
+                return path
+            }
+
+            val paths: MutableMap<Int, MutableMap<Int, List<Int>>> = mutableMapOf()
+            for (i in 0..3) {
+                for (p1 in rooms[i]) {
+                    for (p2 in hallway) {
+                        val path = getPath(p1, p2)
+                        if (!paths.containsKey(p1)) {
+                            paths[p1] = mutableMapOf()
+                        }
+                        if (!paths.containsKey(p2)) {
+                            paths[p2] = mutableMapOf()
+                        }
+                        paths[p1]!![p2] = path
+                        paths[p2]!![p1] = path.reversed()
+                    }
+                }
+            }
+            paths
+        }
+
+        val distances: Map<Int, Map<Int, Int>> by lazy {
+            paths.map { from ->
+                Pair(
+                    from.key,
+                    from.value.map { to ->
+                        Pair(to.key, to.value.size - 1)
+                    }.toMap()
+                )
+            }.toMap()
+        }
+
+        val final: List<Char> by lazy {
+            var s = "..........."
+            (1..depth).forEach {
+                s += "ABCD"
+            }
+            s.toList()
+        }
     }
 
-    fun parseInput(input: List<String>): List<Int> {
-        return listOf()
+    lateinit var rule: Rule
+
+    data class State(val data: List<Char>) {
+        override fun toString(): String = String(data.toCharArray())
+
+        val next: List<Pair<State, Int>> by lazy {
+            val children: MutableList<Pair<State, Int>> = mutableListOf()
+
+            val srcs = (data.indices).filter { data[it] != '.' }
+            val dsts = (data.indices).filter { data[it] == '.' }
+
+            for (from in srcs) {
+                if (from > 10) {
+                    if (from != rule.rooms[(from - 11) % 4].find { data[it] != '.'}) continue
+                }
+                for (to in dsts) {
+                    val path = rule.paths[from]?.get(to) ?: continue
+                    if (to > 10) {
+                        if ((to - 11) % 4 != data[from] - 'A') continue
+                        if (rule.rooms[data[from] - 'A'].any { data[it] != '.' && data[it] != data[from] }) continue
+                        if (to != rule.rooms[data[from] - 'A'].findLast { data[it] == '.' }) continue
+                    }
+                    if (path.drop(1).any { data[it] != '.' }) continue
+                    val distance = rule.distances[from]!![to]!!
+                    val cost = rule.costs[data[from] - 'A'] * distance
+                    val state = move(from, to)
+                    children.add(state to cost)
+                }
+            }
+
+            children.sortedBy { it.second }
+        }
+
+        fun move(from: Int, to: Int): State {
+            assert(data[from] != '.')
+            assert(data[to] == '.')
+            val chs = data.toMutableList()
+            chs[to] = chs[from]
+            chs[from] = '.'
+            return State(chs)
+        }
     }
 
-    fun printAmphipods(m: Map<Int, Char>) {
+    fun search(initial: State): Pair<Int, List<State>>? {
+        val visited: MutableSet<State> = mutableSetOf()
+        val queue: PriorityQueue<Triple<State, Int, List<State>>> = PriorityQueue(compareBy { it.second })
+        queue.add(Triple(initial, 0, listOf()))
+
+        while (queue.isNotEmpty()) {
+            val curr = queue.remove()
+            if (visited.contains(curr.first)) continue
+            visited.add(curr.first)
+
+            if (curr.first.data == rule.final) {
+                return curr.second to curr.third
+            }
+
+            for ((state, cost) in curr.first.next) {
+                if (visited.contains(state)) continue
+                val log = curr.third.toMutableList()
+                log.add(curr.first)
+                val next = Triple(state, curr.second + cost, log)
+                queue.add(next)
+            }
+        }
+
+        return null
+    }
+
+    fun printState(s: State) {
         println("+-----------------------+")
         print("|")
-        (0..10).forEach { print(" "); print(m[it] ?: '.') }
+        (0..10).forEach { print(" "); print(s.data[it]) }
         println(" |")
         print("+---")
-        (11..17 step 2).forEach {
-            print("|"); print(" "); print(m[it] ?: '.'); print(" ")
+        (0..3).forEach {
+            print("|"); print(" "); print(s.data[it + 11]); print(" ")
         }
         println("|---+")
-        print("   ")
-        (12..18 step 2).forEach {
-            print(" |"); print(" "); print(m[it] ?: '.');
+        for (i in 15 until s.data.size step 4) {
+            print("   ")
+            (0..3).forEach {
+                print(" |"); print(" "); print(s.data[it + i])
+            }
+            println(" |")
         }
-        println(" |")
         println("    +---------------+")
     }
 
-    fun isDone(amphipods: Map<Int, Char>): Boolean {
-        val final = mapOf(
-            11 to 'A', 13 to 'B', 15 to 'C', 17 to 'D',
-            12 to 'A', 14 to 'B', 16 to 'C', 18 to 'D',
-        )
-        amphipods.forEach { (position, name) ->
-            if (final[position] != name) return false
+    fun parseInput(input: List<String>): State {
+        var s = input[1].substring(1, 12)
+        for (line in input.drop(2)) {
+            if (line[3] == '#') continue
+            s = s + line[3] + line[5] + line[7] + line[9]
         }
-        return true
-    }
-
-    fun next(amphipods: Map<Int, Char>): List<Map<Int, Char>> {
-        val rv: MutableList<Map<Int, Char>> = mutableListOf()
-        for ((position, name) in amphipods) {
-            val nextPostions = burrowMap[position].indices.filter { burrowMap[position][it] > 0 }
-            for (nextPosition in nextPostions) {
-                val new = moveAmphipod(amphipods, position, nextPosition) ?: continue
-                printAmphipods(new)
-                println()
-            }
-        }
-        return rv.toList()
+        return State(s.toList())
     }
 
     fun part1(input: List<String>): Int {
-        val amphipods: Map<Int, Char> = mapOf(
-            11 to 'B', 13 to 'C', 15 to 'B', 17 to 'D',
-            12 to 'A', 14 to 'D', 16 to 'C', 18 to 'A',
-        )
-        println(isDone(amphipods))
-        burrowMap.forEach {
-            println(it)
-        }
-        printAmphipods(amphipods)
-        println()
-        next(amphipods).forEach {
-            printAmphipods(it)
-            println()
-        }
-        return 0
+        rule = Rule(input.size - 3)
+        val state = parseInput(input)
+        return search(state)?.first ?: 0
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        rule = Rule(input.size - 1)
+        val input2 = input.toMutableList()
+        input2.add(3, "  #D#C#B#A#")
+        input2.add(4, "  #D#B#A#C#")
+        val state = parseInput(input2)
+        return search(state)?.first ?: 0
     }
 
     val day = 23
@@ -141,6 +193,6 @@ fun main() {
     check(part1(exampleInput) == 12521)
     print("Part One: "); println(part1(input))
 
-    check(part2(exampleInput) == -1)
+    check(part2(exampleInput) == 44169)
     print("Part Two: "); println(part2(input))
 }
