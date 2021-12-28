@@ -7,7 +7,7 @@ fun main() {
             if (visited.contains(pc to regs)) return false
             visited.add(pc to regs)
             if ((regs['z'] ?: 0) > 1000000L) return false
-            
+
             if (pc >= program.size) {
                 if (regs['z'] == 0L) {
                     final = ds.joinToString("") { it.toString() }
